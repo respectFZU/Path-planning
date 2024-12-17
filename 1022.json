@@ -1,0 +1,510 @@
+{
+    "nodes": [
+        {
+            "id": "0",
+            "coordinate": {
+                "x": 220,
+                "y": 726
+            },
+            "edges": [
+                {
+                    "destination": "12",
+                    "weight": 1
+                },
+                {
+                    "destination": "1",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "1",
+            "coordinate": {
+                "x": 649,
+                "y": 734
+            },
+            "edges": [
+                {
+                    "destination": "0",
+                    "weight": 1
+                },
+                {
+                    "destination": "13",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "2",
+            "coordinate": {
+                "x": 1744,
+                "y": 1513
+            },
+            "edges": [
+                {
+                    "destination": "3",
+                    "weight": 1
+                },
+                {
+                    "destination": "5",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "3",
+            "coordinate": {
+                "x": 1021,
+                "y": 1342
+            },
+            "edges": [
+                {
+                    "destination": "12",
+                    "weight": 1
+                },
+                {
+                    "destination": "2",
+                    "weight": 1
+                },
+                {
+                    "destination": "6",
+                    "weight": 1
+                },
+                {
+                    "destination": "13",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "4",
+            "coordinate": {
+                "x": 1896,
+                "y": 734
+            },
+            "edges": [
+                {
+                    "destination": "24",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "5",
+            "coordinate": {
+                "x": 2247,
+                "y": 2140
+            },
+            "edges": [
+                {
+                    "destination": "11",
+                    "weight": 1
+                },
+                {
+                    "destination": "2",
+                    "weight": 1
+                },
+                {
+                    "destination": "21",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "6",
+            "coordinate": {
+                "x": 1287,
+                "y": 2663
+            },
+            "edges": [
+                {
+                    "destination": "3",
+                    "weight": 1
+                },
+                {
+                    "destination": "11",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "7",
+            "coordinate": {
+                "x": 3283,
+                "y": 1998
+            },
+            "edges": [
+                {
+                    "destination": "9",
+                    "weight": 1
+                },
+                {
+                    "destination": "11",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "8",
+            "coordinate": {
+                "x": 4291,
+                "y": 2739
+            },
+            "edges": [
+                {
+                    "destination": "15",
+                    "weight": 1
+                },
+                {
+                    "destination": "14",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "9",
+            "coordinate": {
+                "x": 3008,
+                "y": 3290
+            },
+            "edges": [
+                {
+                    "destination": "7",
+                    "weight": 1
+                },
+                {
+                    "destination": "16",
+                    "weight": 1
+                },
+                {
+                    "destination": "10",
+                    "weight": 1
+                },
+                {
+                    "destination": "15",
+                    "weight": 1
+                },
+                {
+                    "destination": "17",
+                    "weight": 1
+                },
+                {
+                    "destination": "11",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "10",
+            "coordinate": {
+                "x": 3569,
+                "y": 2530
+            },
+            "edges": [
+                {
+                    "destination": "14",
+                    "weight": 1
+                },
+                {
+                    "destination": "15",
+                    "weight": 1
+                },
+                {
+                    "destination": "9",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "11",
+            "coordinate": {
+                "x": 2304,
+                "y": 2663
+            },
+            "edges": [
+                {
+                    "destination": "9",
+                    "weight": 1
+                },
+                {
+                    "destination": "7",
+                    "weight": 1
+                },
+                {
+                    "destination": "5",
+                    "weight": 1
+                },
+                {
+                    "destination": "6",
+                    "weight": 1
+                },
+                {
+                    "destination": "18",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "12",
+            "coordinate": {
+                "x": 479,
+                "y": 1513
+            },
+            "edges": [
+                {
+                    "destination": "0",
+                    "weight": 1
+                },
+                {
+                    "destination": "22",
+                    "weight": 1
+                },
+                {
+                    "destination": "3",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "13",
+            "coordinate": {
+                "x": 1173,
+                "y": 648
+            },
+            "edges": [
+                {
+                    "destination": "3",
+                    "weight": 1
+                },
+                {
+                    "destination": "1",
+                    "weight": 1
+                },
+                {
+                    "destination": "21",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "14",
+            "coordinate": {
+                "x": 3854,
+                "y": 1028
+            },
+            "edges": [
+                {
+                    "destination": "21",
+                    "weight": 1
+                },
+                {
+                    "destination": "25",
+                    "weight": 1
+                },
+                {
+                    "destination": "10",
+                    "weight": 1
+                },
+                {
+                    "destination": "8",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "15",
+            "coordinate": {
+                "x": 4567,
+                "y": 3613
+            },
+            "edges": [
+                {
+                    "destination": "10",
+                    "weight": 1
+                },
+                {
+                    "destination": "8",
+                    "weight": 1
+                },
+                {
+                    "destination": "25",
+                    "weight": 1
+                },
+                {
+                    "destination": "9",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "16",
+            "coordinate": {
+                "x": 3949,
+                "y": 4364
+            },
+            "edges": [
+                {
+                    "destination": "9",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "17",
+            "coordinate": {
+                "x": 2542,
+                "y": 4507
+            },
+            "edges": [
+                {
+                    "destination": "9",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "18",
+            "coordinate": {
+                "x": 1382,
+                "y": 3851
+            },
+            "edges": [
+                {
+                    "destination": "11",
+                    "weight": 1
+                },
+                {
+                    "destination": "20",
+                    "weight": 1
+                },
+                {
+                    "destination": "23",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "19",
+            "coordinate": {
+                "x": 4757,
+                "y": 648
+            },
+            "edges": [
+                {
+                    "destination": "25",
+                    "weight": 1
+                },
+                {
+                    "destination": "24",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "20",
+            "coordinate": {
+                "x": 790,
+                "y": 3290
+            },
+            "edges": [
+                {
+                    "destination": "18",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "21",
+            "coordinate": {
+                "x": 2647,
+                "y": 1085
+            },
+            "edges": [
+                {
+                    "destination": "13",
+                    "weight": 1
+                },
+                {
+                    "destination": "24",
+                    "weight": 1
+                },
+                {
+                    "destination": "14",
+                    "weight": 1
+                },
+                {
+                    "destination": "5",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "22",
+            "coordinate": {
+                "x": 479,
+                "y": 2663
+            },
+            "edges": [
+                {
+                    "destination": "12",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "23",
+            "coordinate": {
+                "x": 649,
+                "y": 4364
+            },
+            "edges": [
+                {
+                    "destination": "18",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "24",
+            "coordinate": {
+                "x": 3135,
+                "y": 552
+            },
+            "edges": [
+                {
+                    "destination": "4",
+                    "weight": 1
+                },
+                {
+                    "destination": "21",
+                    "weight": 1
+                },
+                {
+                    "destination": "19",
+                    "weight": 1
+                }
+            ]
+        },
+        {
+            "id": "25",
+            "coordinate": {
+                "x": 4567,
+                "y": 1908
+            },
+            "edges": [
+                {
+                    "destination": "19",
+                    "weight": 1
+                },
+                {
+                    "destination": "14",
+                    "weight": 1
+                },
+                {
+                    "destination": "15",
+                    "weight": 1
+                }
+            ]
+        }
+    ]
+}
