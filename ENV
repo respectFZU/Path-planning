@@ -1,0 +1,419 @@
+import math
+
+import gym
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+
+# 奖励塑造
+# 1、Action：Move（Choose Node） ；Stay
+# 2、Arrive Goal、Finish Work
+# 3、Collision 、Choose Wrong Node(not Neighbor)
+# 4、Blocking
+Move_Cost, Stay_Cost, Collision_Cost, Wrong_Cost, Blocking_Cost = -0.3, -0.5, -2, -3, -1
+Goal_Arrive_Reward, Finish_Reward = 0, 20
+JOINT = False  # 联合奖励计算
+# 暂时写成这样的自定义初始状态
+AGV_data_bag = [
+    {'name': 1, 'start_id': 18, 'goal_id': 5},
+    {'name': 2, 'start_id': 1, 'goal_id': 12},
+    {'name': 3, 'start_id': 5, 'goal_id': 21}
+]
+
+
+#  根据JSon图信息构造G
+def graph_json(data):
+    G = nx.Graph()
+    # 解析节点和边
+    for node in data["nodes"]:
+        node_id = int(node["id"])  # 确保节点ID是整数
+        x, y = node["coordinate"]["x"], node["coordinate"]["y"]
+        # 添加节点到图中
+        G.add_node(node_id, pos=(x, y))
+        # 添加边到图中
+        for edge in node["edges"]:
+            destination = int(edge["destination"])  # 确保目标节点ID是整数
+            weight = edge["weight"]
+            G.add_edge(node_id, destination, weight=weight)
+
+    distances = []
+    for u, v in G.edges():
+        x1, y1 = G.nodes[u]['pos']
+        x2, y2 = G.nodes[v]['pos']
+        distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        distances.append(distance)
+    max_distance = max(distances)
+    for u, v in G.edges():
+        x1, y1 = G.nodes[u]['pos']
+        x2, y2 = G.nodes[v]['pos']
+        distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        normalized_weight = (distance / max_distance) * 10  # 归一化
+        G[u][v]['weight'] = normalized_weight
+
+    return G
+
+
+def construct_adjacency_matrix(G):
+    # 获取图中的节点列表并排序
+    nodes = sorted(G.nodes())
+    # 创建一个空的邻接矩阵
+    adj_matrix = np.zeros((len(nodes), len(nodes)))
+
+    # 填充邻接矩阵
+    for i, node1 in enumerate(nodes):
+        for j, node2 in enumerate(nodes):
+            if G.has_edge(node1, node2):
+                adj_matrix[i, j] = G[node1][node2]['weight']
+            else:
+                adj_matrix[i, j] = 0  # 无边时权重为0
+
+    return adj_matrix
+
+
+# 定义状态信息：position_id、agv_name、goal_id
+class State(object):
+    def __init__(self, world0, goals, adj_matrix, num_nodes=26, num_agents=2):
+        assert world0.shape == (2, num_nodes) and world0.shape == goals.shape
+        self.state = world0.copy()
+        self.goals = goals.copy()
+        self.adj_matrix = adj_matrix
+        self.num_nodes = num_nodes
+        self.num_agents = num_agents
+        self.agents_pos, self.agents_goal = self.scanForAgents()
+        assert (len(self.agents_pos) == num_agents)
+
+    def scanForAgents(self):
+        # 初始化Agent列表，将当前位置和目标位置置为-1（无效位）
+        agents_pos = [-1 for _ in range(self.num_agents)]
+        agents_goal = [-1 for i in range(self.num_agents)]
+
+        # state反映的是状态，第一行是num_node，第二行是顶点的停留Agent的name
+        for i in range(self.state.shape[1]):
+            agent_name = self.state[1, i]  # 第二行第i列的agv_name
+            if agent_name > 0:
+                agents_pos[agent_name - 1] = self.state[0, i]  # = i  第一行第i列的node_id=i。
+
+        # goals应该和state形状一样
+        for i in range(self.goals.shape[1]):
+            agent_name = self.goals[1, i]
+            if agent_name > 0:
+                agents_goal[agent_name - 1] = self.state[0, i]
+        # example agents_pos[0,1,2,3,4,5,6,7]      agents_goal[0,1,2,3,4,5,6,7]
+        #          [0,2,0,0,0,1,0,0]                 [1,0,0,0,2,0,0,0]
+        #          agent[2]=1,agent[1]=5;state[1,1]=2,state[1,5]=1;goal[1,0]=1,goal[1,4]=2.
+        return agents_pos, agents_goal
+
+    # 获取Agent的位置ID
+    def getPos(self, agent_name):
+        return self.agents_pos[agent_name - 1]
+
+    # 获取Agent的目标ID
+    def getGoal(self, agent_name):
+        return self.agents_goal[agent_name - 1]
+
+    def getNeighbors(self, agent_name):
+        neighbors = []
+        node_id = self.getPos(agent_name)
+        for i in range(self.num_nodes):
+            if self.adj_matrix[node_id][i] != 0:
+                neighbors.append(i)
+        return neighbors
+
+    # Action:choose a node in neighbors
+    # returns state:
+    #     2: Agent到达目标点或停留在目标点 0
+    #     1: Agent停留在原地（非目标）-0.5
+    #     0: 移向邻居节点 -0.3
+    #    -1: 无效动作 -3
+    #    -2: 与其他Agent发生碰撞 -2
+    #     检查顺序:无效动作--停留:在终点和不在终点--移动：碰撞-到终点-未到终点
+    def act(self, action, agent_name):
+        neighbors = self.getNeighbors(agent_name)
+        agent_position = self.getPos(agent_name)
+        agent_goal = self.getGoal(agent_name)
+        if action not in neighbors or agent_position:
+            print("无效动作")
+            return -1
+        elif action == agent_position:
+            if agent_position == agent_goal:
+                print("在终点停留")
+                return 2
+            else:
+                print("在非终点停留")
+                return 1
+        elif action in neighbors:
+            if self.state[0, action] != 0:
+                print("动作点位存在其他Agent，碰撞")
+                return -2
+            elif action == agent_goal:
+                print("到达终点或在终点等候")
+                return 2
+            else:  # action in neighbors， self.state[0,action] == 0， action != agent_goal
+                print("正常移动")
+                return 0
+
+    # 全部agent都到目标点--判断
+    def done(self):
+        numComplete = 0
+        for i in range(self.num_agents):
+            # example agents[0,1,2,3,4,5,6,7]     goals agents[0,1,2,3,4,5,6,7]
+            #               [1,2,0,0,0,0,0,0]                 [1,0,0,0,2,0,0,0]
+            agent_pos = self.agents_pos[i]
+            agent_goal = self.agents_goal[i]
+            if agent_pos == agent_goal:
+                numComplete += 1
+        return numComplete == self.num_agents
+
+
+# 定义环境:包括初始化、状态空间、动作空间、观测空间、奖励机制、环境交互、渲染等，未考虑初始状态为随机
+class SimpleMAPFEnv(gym.Env):
+    def __init__(self, graph, AGV_bag, world=None, goals=None, num_nodes=26, num_agents=2):
+        super(SimpleMAPFEnv, self).__init__()
+        self.graph = graph
+        self.nodes = list(graph.nodes)
+        self.Agv_bag = AGV_bag
+        self.world = world
+        self.goals = goals
+        self.num_agents = num_agents
+        self.num_nodes = num_nodes
+        self.individual_rewards = [0 for i in range(num_agents + 1)]
+        self.setWorld()
+
+    def setWorld(self):
+        # 提供一个运行地图，随机初始化Agent位置和目标（障碍物不设置)
+        # Agv_data_bag自己可以设置,world本质是state
+        if not (self.graph is None):
+            world = np.zeros((2, self.num_nodes), dtype=int)
+            goals = np.zeros((2, self.num_nodes), dtype=int)
+            world[0] = np.arange(self.num_nodes)
+            goals[0] = np.arange(self.num_nodes)
+            adj_matrix = construct_adjacency_matrix(self.graph)
+            if not (self.Agv_bag is None):
+                for agv in self.Agv_bag:
+                    name = agv['name']
+                    start_id = agv['start_id']
+                    goal_id = agv['goal_id']
+                    world[1, start_id] = name
+                    goals[1, goal_id] = name
+            else:
+                print("未提供初始AGV信息")
+                # 随机选择节点放置AGV直到数量为num_agents
+                for i in range(self.num_agents):  # [)
+                    # 随机选择一个节点作为起始位置，确保该位置没有其他AGV
+                    start_id = np.random.choice(self.num_nodes)
+                    while world[1, start_id] != 0:
+                        start_id = np.random.choice(self.num_nodes)
+                    world[1, start_id] = i + 1
+                    # 随机选择一个不同的节点作为目标
+                    goal_id = np.random.choice(self.num_nodes)
+                    while goal_id == start_id or goals[1, goal_id] != 0:
+                        goal_id = np.random.choice(self.num_nodes)
+                    goals[1, goal_id] = i + 1
+            initial_world = world.copy()
+            initial_goals = goals.copy()
+            self.world = State(initial_world, initial_goals, self.num_agents)
+            return
+        else:
+            # # 随机生成世界：自定义尺寸、数量、起点、终点、（障碍物未设置）
+            # # 在Generate.py中随机生成一定点数的地图
+            # with open('../data/1022.json', 'r') as file:
+            #     generate_data = json.load(file)
+            # 还没实现随机生成
+            # world_random = np.zeros((2, self.num_nodes), dtype=int)
+            # goals_random = np.zeros((2, self.num_nodes), dtype=int)
+            # world_random[0] = np.arange(self.num_nodes)
+            # goals_random[0] = np.arange(self.num_nodes)
+            # print("未提供地图")
+            return
+
+    def getDistance(self, node1, node2):
+        assert node1 and node2 in self.graph
+        try:
+            distance = nx.shortest_path_length(self.graph, source=node1, target=node2, weight='weight')
+            return distance
+        except nx.NetworkXNoPath:
+            return None
+
+    def getObservation(self, agent_name, jump_k):
+        assert (agent_name > 0)
+        # 不同于观察法，我们要获取一个agv的局部视野，应该从它的当前位置出发，获取一定跳数的邻居
+        position_id = self.world.getPos(agent_name)
+        goal_id = self.world.getGoal(agent_name)
+        # 使用广度优先搜索（BFS）获取跳数为 jump_k 的邻居节点
+        visited = set()
+        queue = [(position_id, 0)]  # (当前节点, 当前跳数)
+        neighbors = []  # 不含自己
+        while queue:
+            current_node, current_jump = queue.pop(0)
+            if current_jump < jump_k:
+                for neighbor in self.graph.neighbors(current_node):
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append((neighbor, current_jump + 1))
+                        if current_jump + 1 <= jump_k:
+                            neighbors.append(neighbor)
+        # 找到第 k 跳中到目标距离最短的节点
+        min_distance = float('inf')
+        best_node = None
+        for node in neighbors:
+            if self.getDistance(node, goal_id) < min_distance:
+                min_distance = self.getDistance(node, goal_id)
+                best_node = node
+        # k跳邻居范围内的自己、其他agv目标以及其他agv位置
+        # 为了保证向量维度一致，依然用2*26维，对于局部视野外的信息设置为0，获取视野可见的目标方位
+        our_goal = np.zeros((2, self.num_nodes))
+        other_goals = np.zeros((2, self.num_nodes))
+        other_positions = np.zeros((2, self.num_nodes))
+        our_goal[1, best_node] = agent_name  # 标记自己的目标位置
+        for neighbor in neighbors:
+            # 检查是否有其他智能体的目标在邻居节点
+            for other_agent_name in range(1, self.num_agents + 1):
+                if other_agent_name != agent_name:
+                    other_goal_id = self.world.getGoal(other_agent_name)
+                    other_position_id = self.world.getPos(other_agent_name)
+                    # example positions[0,1,2,3,4,5,6,7]
+                    #                  [1,3,0,0,2,0,0,0]
+                    if neighbor == other_goal_id:
+                        other_goals[1, neighbor] = other_agent_name
+                    if neighbor == other_position_id:
+                        other_positions[1, neighbor] = other_agent_name
+
+        return our_goal, other_goals, other_positions, neighbors
+
+    # 要再加一个逻辑，超时reset
+    def reset(self):
+        self.setWorld()
+        return self.world
+
+    def complete(self):
+        return self.world.done()
+
+    def getDistanceWeightOne(self, node1, node2, occupied_nodes):
+        """
+        计算两个节点之间的最短路径长度，排除被占据的节点。
+
+        参数:
+        - node1: 起始节点
+        - node2: 目标节点
+        - occupied_nodes: 被其他智能体占据的节点列表
+
+        返回:
+        - 最短路径长度，如果没有路径则返回 None
+        """
+        # 创建一个临时图，排除被占据的节点
+        temp_graph = self.graph.copy()
+        temp_graph.remove_nodes_from(occupied_nodes)
+
+        try:
+            # 使用 NetworkX 的 shortest_path_length 方法计算路径
+            distance = nx.shortest_path_length(temp_graph, source=node1, target=node2, weight=1)
+            return distance
+        except nx.NetworkXNoPath:
+            return None
+
+    def getOtherAgentInVisual(self, agent_name):
+        other_agents = []
+        _, _, other_positions, neighbors = self.getObservation(agent_name, jump_k=2)
+        # 收集视野内的其他智能体
+        for other_agent_name in range(1, self.num_agents + 1):
+            if other_agent_name != agent_name:
+                for neighbor in neighbors:
+                    if other_positions[1, neighbor] == other_agent_name:
+                        other_agents.append(other_agent_name)
+        return other_agents
+
+    def getBlockingCost(self, agent_name):
+        '''计算智能体阻止其他机器人到达目标的数量，并返回相应的惩罚'''
+        inflation = 5
+        other_agents = self.getOtherAgentInVisual(agent_name)
+        num_blocking = 0
+        # 检查每个其他智能体是否被阻挡
+        for other_agent in other_agents:
+            other_pos = self.world.getPos(other_agent)
+            other_goal = self.world.getGoal(other_agent)
+            # 计算移除当前智能体之前的路径
+            path_before = self.getDistanceWeightOne(other_pos, other_goal, self.world.getPos(agent_name))
+            # 计算移除当前智能体之后的路径
+            path_after = self.getDistanceWeightOne(other_pos, other_goal, None)
+
+            # 判断阻塞情况
+            if (path_before is None and path_after is not None) or (
+                    path_before is not None and path_after is not None and len(path_before) > len(
+                path_after) + inflation):
+                num_blocking += 1
+
+        return num_blocking * Blocking_Cost
+
+    # 应该以最大概率采样动作，后续用到GraphSAge模型做策略，至于联合奖励之后在写
+    def step(self, action_input):
+        """
+        执行给定的动作并更新环境状态。
+
+        参数:
+        - action_input: 包含 (agent_name, action) 的元组
+
+        返回:
+        - state: 新的状态
+        - reward: 动作的奖励
+        - done: 是否完成
+        - info: 其他信息
+        """
+        assert len(action_input) == 2
+        agent_name, action = action_input
+        assert agent_name in range(1, self.num_agents + 1)
+        # 执行动作并获取动作状态
+        action_status = self.world.act(action, agent_name)
+        # 计算奖励
+        if action_status == 2:  # 到达目标或在目标停留
+            reward = Goal_Arrive_Reward  # = 0
+        elif action_status == 1:  # 在非目标停留
+            reward = Stay_Cost  # =-0.5
+        elif action_status == 0:  # 移动到非目标邻居节点
+            reward = Move_Cost  # =-0.3
+        elif action_status == -1:  # 无效动作
+            reward = Wrong_Cost  # =-3
+        elif action_status == -2:  # 碰撞
+            reward = Collision_Cost  # =-2
+        else:
+            reward = 0
+            print("something wrong")
+        # 计算阻塞惩罚
+        blocking_cost = self.getBlockingCost(agent_name)
+        reward += blocking_cost
+        self.individual_rewards[agent_name - 1] = reward
+        if JOINT:
+            other_agents = self.getOtherAgentInVisual(agent_name)
+            v = len(other_agents)
+            if v > 0:
+                reward = self.individual_rewards[agent_name - 1] / 2
+                for agent in other_agents:
+                    reward += self.individual_rewards[agent - 1] / (v * 2)
+        done = self.complete()
+        # if done:
+        #     for i in range(self.num_agents):
+        #         self.individual_rewards[i] += Finish_Reward
+        state = self.getObservation(agent_name, jump_k=2)
+        on_goal = self.world.getPos(agent_name) == self.world.getGoal(agent_name)
+        info = {
+            'blocking': blocking_cost < 0,
+            'valid_action': action_status >= 0,
+        }
+        return state, reward, done, on_goal, info
+
+    def render(self, mode='human'):
+        plt.figure(figsize=(8, 8))
+        pos = nx.get_node_attributes(self.graph, 'pos')
+
+        # 绘制节点
+        nx.draw(self.graph, pos, with_labels=True, node_size=500, node_color='lightblue')
+
+        # 绘制智能体的位置
+        for agent_name in range(1, self.num_agents + 1):
+            agent_pos = self.world.getPos(agent_name)
+            agent_goal = self.world.getGoal(agent_name)
+            plt.scatter(*pos[agent_pos], color='red', s=200, label=f'Agent {agent_name} Pos')
+            plt.scatter(*pos[agent_goal], color='green', s=200, label=f'Agent {agent_name} Goal', marker='*')
+
+        plt.title('AGV Positions and Goals')
+        plt.legend(loc='upper right')
+        plt.show()
