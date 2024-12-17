@@ -1,0 +1,107 @@
+import json
+import networkx as nx
+import math
+
+import numpy as np
+import torch
+
+# 读取JSON文件
+with open('../data/1022.json', 'r') as file:
+    data = json.load(file)
+
+
+def graph(data):
+    G = nx.Graph()
+
+    # 解析节点和边
+    for node in data["nodes"]:
+        node_id = int(node["id"])  # 确保节点ID是整数
+        x, y = node["coordinate"]["x"], node["coordinate"]["y"]
+
+        # 添加节点到图中
+        G.add_node(node_id, pos=(x, y))
+
+        # 添加边到图中
+        for edge in node["edges"]:
+            destination = int(edge["destination"])  # 确保目标节点ID是整数
+            weight = edge["weight"]
+            G.add_edge(node_id, destination, weight=weight)
+
+    # nodes = G.nodes
+    # 创建节点到索引的映射，从 0 开始
+    # node_to_index = {node: idx for idx, node in enumerate(nodes)}
+    # print("Node to Index Mapping:", node_to_index)
+
+    # 使用映射生成 edge_index
+    # edges = [(node_to_index[u], node_to_index[v]) for u, v in G.edges]
+    # edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+    # print(edge_index)
+    # # 打印 edge_index 的最大值和形状
+    # print("Edge Index Shape:", edge_index.shape)
+    # print("Max Index in Edge Index:", edge_index.max().item())
+    # print("Number of Nodes:", len(nodes))
+
+    # 计算所有边的距离
+    distances = []
+    for u, v in G.edges():
+        x1, y1 = G.nodes[u]['pos']
+        x2, y2 = G.nodes[v]['pos']
+        distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        distances.append(distance)
+
+    # 找到最大距离用于归一化
+    max_distance = max(distances)
+
+    # 更新权重为归一化后的距离
+    for u, v in G.edges():
+        x1, y1 = G.nodes[u]['pos']
+        x2, y2 = G.nodes[v]['pos']
+        distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        normalized_weight = (distance / max_distance) * 10  # 归一化
+        G[u][v]['weight'] = normalized_weight
+
+    # for u, v, data in G.edges(data=True):
+    #     print(f"Edge from {u} to {v} has weight {data['weight']}")
+    return G
+
+
+def get_neighbors(G, node_id):
+    """
+    获取指定节点的邻居节点列表。
+
+    参数:
+    G (nx.Graph): 图对象
+    node_id (int): 节点ID
+
+    返回:
+    list: 邻居节点的ID列表
+    """
+    if node_id in G:
+        return list(G.neighbors(node_id))
+    else:
+        print(f"节点 {node_id} 不存在于图中。")
+        return []
+
+
+def construct_adjacency_matrix(G):
+    # 获取图中的节点列表并排序
+    nodes = sorted(G.nodes())
+    # 创建一个空的邻接矩阵
+    adj_matrix = np.zeros((len(nodes), len(nodes)))
+
+    # 填充邻接矩阵
+    for i, node1 in enumerate(nodes):
+        for j, node2 in enumerate(nodes):
+            if G.has_edge(node1, node2):
+                adj_matrix[i, j] = G[node1][node2]['weight']
+            else:
+                adj_matrix[i, j] = 0  # 无边时权重为0
+
+    return adj_matrix
+
+
+if __name__ == '__main__':
+    G = graph(data)
+    A = get_neighbors(G,node_id=0)
+    adj_matrix = construct_adjacency_matrix(G)
+    print(adj_matrix)
